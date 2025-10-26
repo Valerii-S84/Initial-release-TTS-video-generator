@@ -1,0 +1,6 @@
+.tmp_build/
+output_videos/
+__pycache__/
+.venv/
+.env
+*.log
