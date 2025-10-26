@@ -50,18 +50,3 @@ Examples
   `python make_videos.py --text_mode karaoke --karaoke_color lightblue --subtitle_fontname "Comic Sans MS" --logo assets/logo.png --logo_pos bottom-right --aspect 9:16`
 - Horizontal (16:9) static text, with intro/outro:
   `python make_videos.py --aspect 16:9 --intro clips/intro.mp4 --outro clips/outro.mp4`
-
-Publish to GitHub
-1) Initialize Git and commit:
-   - `git init`
-   - `git add .`
-   - `git commit -m "Initial release: TTS video generator"`
-2) Create an empty repo on GitHub (no auto-README), copy its URL.
-3) Add remote and push:
-   - `git remote add origin https://github.com/USER/REPO.git`
-   - `git branch -M main`
-   - `git push -u origin main`
-
-Notes
-- This repo includes `.github/workflows/ci.yml` that installs deps and runs `python make_videos.py --help` on pushes.
-- Do not commit secrets. Keep `OPENAI_API_KEY` in env vars locally or GitHub Actions secrets if you extend CI.
