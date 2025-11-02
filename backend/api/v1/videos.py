@@ -13,7 +13,7 @@ from ...auth import AuthService
 from ...db import get_db
 from ...models import Video
 from ...core.logging import audit_log
-from ...schemas.video import VideoListResponse
+from ...schemas.video import VideoListResponse, UploadInitPayload, GeneratePayload
 from ...services.quota_service import check_quota, increment_usage
 from ...core.security import sanitize_filename
 from ...core.config import settings
@@ -146,10 +146,10 @@ async def upload_video(
 # ---------- Chunked upload (init/chunk/finish) ----------
 
 @router.post("/upload/init")
-def upload_init(payload: dict, current_user = Depends(AuthService.get_current_user), db: Session = Depends(get_db)):
+def upload_init(payload: UploadInitPayload, current_user = Depends(AuthService.get_current_user), db: Session = Depends(get_db)):
     check_quota(db, current_user, "upload")
-    filename = sanitize_filename(str(payload.get("filename") or "video.mp4"))
-    size = int(payload.get("size") or 0)
+    filename = sanitize_filename(str(payload.filename or "video.mp4"))
+    size = int(payload.size or 0)
     if size <= 0:
         raise HTTPException(status_code=400, detail={"error": {"code": "VALIDATION_ERROR", "message": "Некоректний розмір файлу"}})
     res = init_chunk_upload(filename, size, getattr(current_user, "id", None))
@@ -164,7 +164,7 @@ async def upload_chunk(upload_id: str, offset: int, request: Request, current_us
         _res = append_chunk(upload_id, offset, body, getattr(current_user, "id", None))
         res = await _res if inspect.isawaitable(_res) else _res
         if res.get("conflict"):
-            return JSONResponse({"error": {"code": "BAD_OFFSET", "message": "Невірний offset"}, "received": res.get("received", 0)}, status_code=409)
+            return JSONResponse({"error": {"code": "BAD_OFFSET", "??????????? offset": "Невірний offset"}, "received": res.get("received", 0)}, status_code=409)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Сесію завантаження не знайдено"}})
     except PermissionError:
@@ -182,7 +182,7 @@ def upload_finish(upload_id: str, current_user = Depends(AuthService.get_current
     except PermissionError:
         raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": "Нема доступу до сесії"}})
     except ValueError as e:
-        msg = "Файл завантажено не повністю" if str(e) == "incomplete" else "ffprobe перевірка не пройшла"
+        msg = "???????????? ?? ?????????" if str(e) == "incomplete" else "????????? ffprobe ?? ????????"
         raise HTTPException(status_code=400, detail={"error": {"code": "VALIDATION_ERROR", "message": msg}})
     increment_usage(db, current_user, "upload")
     audit_log("upload.finish", getattr(current_user, "id", None), video_path=str(res.get("video_path")))
@@ -199,3 +199,4 @@ async def generate(request: Request, payload: dict, current_user = Depends(AuthS
     res = enqueue_generate(cfg)
     increment_usage(db, current_user, "generate")
     return res
+
