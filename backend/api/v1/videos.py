@@ -14,11 +14,26 @@ from ...db import get_db
 from ...models import Video
 from ...core.logging import audit_log
 from ...schemas.video import VideoListResponse, UploadInitPayload, GeneratePayload
+from ...api.errors import (
+    BAD_OFFSET,
+    NOT_FOUND,
+    FORBIDDEN,
+    VALIDATION_ERROR,
+    MSG_VIDEO_NOT_FOUND,
+    MSG_UPLOAD_SESSION_NOT_FOUND,
+    MSG_UPLOAD_FORBIDDEN,
+    MSG_BAD_OFFSET,
+    MSG_INVALID_FILE_SIZE,
+    MSG_FFPROBE_FAILED,
+    MSG_UPLOAD_INCOMPLETE,
+    MSG_CHUNK_TOO_LARGE,
+    err,
+)
 from ...services.quota_service import check_quota, increment_usage
 from ...core.security import sanitize_filename
 from ...core.config import settings
 from ..dependencies import STORAGE_INPUT, STORAGE_OUTPUT, MUSIC_DIR, limiter
-from ...services.storage_service import save_direct_upload, init_chunk_upload, append_chunk as _append_chunk_storage, finish_chunk_upload
+from ...services.storage_service import save_direct_upload, init_chunk_upload, append_chunk as _append_chunk_storage, finish_chunk_upload, get_upload_info
 from ...services.video_generator import enqueue_generate, build_generate_cfg
 import inspect
 
@@ -160,6 +175,13 @@ def upload_init(payload: UploadInitPayload, current_user = Depends(AuthService.g
 @router.patch("/upload/chunk")
 async def upload_chunk(upload_id: str, offset: int, request: Request, current_user = Depends(AuthService.get_current_user)):
     body = await request.body()
+    if len(body) > settings.MAX_CHUNK_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail=err(VALIDATION_ERROR, MSG_CHUNK_TOO_LARGE))
+    if settings.ENFORCE_UPLOAD_TOKEN:
+        token = request.query_params.get("token")
+        info = get_upload_info(upload_id) or {}
+        if not token or token != str(info.get("token")):
+            raise HTTPException(status_code=403, detail=err(FORBIDDEN, MSG_UPLOAD_FORBIDDEN))
     try:
         _res = append_chunk(upload_id, offset, body, getattr(current_user, "id", None))
         res = await _res if inspect.isawaitable(_res) else _res
@@ -199,4 +221,8 @@ async def generate(request: Request, payload: dict, current_user = Depends(AuthS
     res = enqueue_generate(cfg)
     increment_usage(db, current_user, "generate")
     return res
+
+
+
+
 

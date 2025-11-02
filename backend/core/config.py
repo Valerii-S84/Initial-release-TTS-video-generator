@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     STORAGE_OUTPUT: str = "backend/output_videos"
     STORAGE_TMP: str = "backend/tmp"
     MAX_UPLOAD_SIZE_MB: int = 500
+    MAX_CHUNK_SIZE_MB: int = 8
+    ENFORCE_UPLOAD_TOKEN: bool = False
     # Media
     MUSIC_DIR: str = "backend/music"
     MUSIC_PREVIEWS: str = "backend/music_previews"

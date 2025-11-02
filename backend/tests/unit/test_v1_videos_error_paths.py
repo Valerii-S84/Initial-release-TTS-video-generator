@@ -100,3 +100,46 @@ def test_upload_chunk_success_happy_path(monkeypatch):
     r = client.patch("/api/v1/videos/upload/chunk", params={"upload_id": "U_ok", "offset": 0}, data=b"abc")
     assert r.status_code == 200
     assert r.json().get("received") == 3
+
+
+def test_upload_chunk_too_large(monkeypatch):
+    import backend.api.v1.videos as v1_vid
+    from backend.core import config as cfg
+    _override_auth(24)
+    client = TestClient(app)
+    # Make max chunk size zero to trigger validation easily
+    monkeypatch.setattr(cfg.settings, "MAX_CHUNK_SIZE_MB", 0)
+    # No need to stub append; size check happens before
+    r = client.patch("/api/v1/videos/upload/chunk", params={"upload_id": "U_any", "offset": 0}, data=b"abc")
+    assert r.status_code == 400
+    assert r.json().get("detail", {}).get("error", {}).get("code") == "VALIDATION_ERROR"
+
+
+def test_upload_init_returns_token_and_info(monkeypatch):
+    _override_auth(25)
+    client = TestClient(app)
+    r = client.post("/api/v1/videos/upload/init", json={"filename": "x.mp4", "size": 10})
+    assert r.status_code == 200
+    js = r.json()
+    assert "token" in js and js.get("upload_id")
+
+
+def test_upload_chunk_requires_token_when_enforced(monkeypatch, tmp_path):
+    import backend.api.v1.videos as v1_vid
+    from backend.core import config as cfg
+    from backend.services import storage_service as ss
+    _override_auth(26)
+    client = TestClient(app)
+    # Enforce token
+    monkeypatch.setattr(cfg.settings, "ENFORCE_UPLOAD_TOKEN", True)
+    # Prepare a real session via init to get upload_id and token
+    r = client.post("/api/v1/videos/upload/init", json={"filename": "x.mp4", "size": 3})
+    up = r.json()
+    upload_id = up["upload_id"]; token = up["token"]
+    # Without token -> 403
+    r403 = client.patch("/api/v1/videos/upload/chunk", params={"upload_id": upload_id, "offset": 0}, data=b"abc")
+    assert r403.status_code == 403
+    # With token and stub append_chunk -> 200
+    monkeypatch.setattr(v1_vid, "append_chunk", lambda *a, **k: {"received": 3, "size": 3})
+    r200 = client.patch("/api/v1/videos/upload/chunk", params={"upload_id": upload_id, "offset": 0, "token": token}, data=b"abc")
+    assert r200.status_code == 200 and r200.json()["received"] == 3
