@@ -2,7 +2,7 @@ Short-form video generator with TTS voice-over, background music, on-video text 
 
 What it does per video
 - Picks next video from `input_videos/`, scales/crops to target aspect, 30fps.
-- Reads next quote from `quotes.txt` (UTF‑8 by default), overlays text.
+- Reads next quote from `quotes.txt` (UTF-8 by default), overlays text.
 - Generates TTS (OpenAI or gTTS fallback), mixes with background music with auto-ducking and 3s voice delay.
 - Optionally bakes karaoke subtitles timed to the voice.
 - Optionally overlays a logo and concatenates intro/outro.
@@ -15,9 +15,9 @@ Requirements
 - Optional: set `OPENAI_API_KEY` for OpenAI TTS; otherwise gTTS fallback is used.
 
 Folders
-- `input_videos/` — source videos (.mp4/.mov/.mkv…)
-- `music/` — background music (.mp3/.wav/.m4a…)
-- `quotes.txt` — one quote per line (UTF‑8 by default)
+- `input_videos/` — source videos (.mp4/.mov/.mkv)
+- `music/` — background music (.mp3/.wav/.m4a)
+- `quotes.txt` — one quote per line (UTF-8 by default)
 - `assets/` — your logo(s) (e.g., `assets/logo.png`)
 - `clips/` — optional intro/outro clips
 - `output_videos/` — results (auto-created, git-ignored)
@@ -50,3 +50,22 @@ Examples
   `python make_videos.py --text_mode karaoke --karaoke_color lightblue --subtitle_fontname "Comic Sans MS" --logo assets/logo.png --logo_pos bottom-right --aspect 9:16`
 - Horizontal (16:9) static text, with intro/outro:
   `python make_videos.py --aspect 16:9 --intro clips/intro.mp4 --outro clips/outro.mp4`
+
+Publish to GitHub
+1) Initialize Git and commit:
+   - `git init`
+   - `git add .`
+   - `git commit -m "Initial release: TTS video generator"`
+2) Create an empty repo on GitHub (no auto-README), copy its URL.
+3) Add remote and push:
+   - `git remote add origin https://github.com/USER/REPO.git`
+   - `git branch -M main`
+   - `git push -u origin main`
+
+Notes
+- This repo includes `.github/workflows/ci.yml` that installs deps and runs `python make_videos.py --help` on pushes.
+- Do not commit secrets. Keep `OPENAI_API_KEY` in env vars locally or GitHub Actions secrets if you extend CI.
+
+License
+- Code is provided under the MIT License (see `LICENSE`).
+- Media assets you add (e.g., `assets/`, `clips/`, `music/`) remain your own content and are not covered by the code license unless you explicitly license them.
