@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import types
 import importlib
+import pytest
 
 
+@pytest.mark.isolated
 def test_voice_selector_fallback_import(monkeypatch):
     # Remove package-relative module to trigger fallback
     monkeypatch.setitem(__import__('sys').modules, 'backend.services.voice_map', None)
@@ -14,4 +16,3 @@ def test_voice_selector_fallback_import(monkeypatch):
     importlib.reload(vs)
     # Should import from top-level fallback and work
     assert vs.select_voice_by_name("Rachel") == "X"
-

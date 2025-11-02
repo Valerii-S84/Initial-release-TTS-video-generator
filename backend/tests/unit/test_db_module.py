@@ -6,17 +6,12 @@ import pytest
 
 
 @pytest.mark.isolated
-def test_db_replica_session_sqlite(tmp_path):
-    # Set primary and replica to temp SQLite files
-    dbfile = tmp_path / "p.db"
-    rfile = tmp_path / "r.db"
+def test_db_sqlite_get_db(tmp_path):
+    dbfile = tmp_path / "test.db"
     os.environ["DATABASE_URL"] = f"sqlite:///{dbfile.as_posix()}"
-    os.environ["DATABASE_REPLICA_URL"] = f"sqlite:///{rfile.as_posix()}"
     import backend.db as db
     importlib.reload(db)
-
-    # Replica session should be distinct and usable
-    gen = db.get_replica_db()
+    gen = db.get_db()
     sess = next(gen)
     try:
         conn = sess.connection()
