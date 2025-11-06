@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 
 from ...job_storage import get_job_storage
 from ...job_storage import list_jobs
+from ...services.video_generator import enqueue_generate
+from ...api.errors import err, NOT_FOUND, VALIDATION_ERROR
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -68,3 +70,22 @@ def job_queue_position(job_id: str):
     # 1-based position for friendlier UX
     position = ahead + 1 if ahead >= 0 else 0
     return {"job_id": job_id, "status": status, "position": position}
+
+
+@router.post("/{job_id}/retry")
+def job_retry(job_id: str):
+    j = Jobs.get(job_id)
+    if not j:
+        raise HTTPException(status_code=404, detail=err(NOT_FOUND))
+    cfg = (j or {}).get("cfg")
+    if not isinstance(cfg, dict) or not cfg.get("video_path"):
+        raise HTTPException(status_code=400, detail=err(VALIDATION_ERROR, None, hint="Немає знімка налаштувань (cfg)"))
+    # Drop job_id to enqueue a new one
+    cfg.pop("job_id", None)
+    try:
+        res = enqueue_generate(cfg)
+    except HTTPException as e:  # bubble up API errors
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=err("GENERATION_FAILED", str(e)))
+    return res

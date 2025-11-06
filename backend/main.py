@@ -244,11 +244,13 @@ from .api import api_router
 from .api.v1 import admin as v1_admin
 from .api.v1 import auth as v1_auth
 from .api.v1 import jobs as v1_jobs
+from .api.v1 import tts as v1_tts
 from .api.v1 import videos as v1_videos
 
 api_router.include_router(v1_auth.router)
 api_router.include_router(v1_videos.router)
 api_router.include_router(v1_jobs.router)
+api_router.include_router(v1_tts.router)
 api_router.include_router(v1_admin.router)
 app.include_router(api_router)
 
