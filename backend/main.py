@@ -37,7 +37,6 @@ from .core.security import (
     sanitize_text,
 )
 from .core.tracing import inject_trace_to_dict, setup_tracing
-from .api.dependencies import limiter
 from .db import get_db
 from .job_storage import get_job_storage
 from .models import Video

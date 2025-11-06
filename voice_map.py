@@ -1,1 +1,255 @@
-"""Production-grade voice selector for ElevenLabs TTS integration.Ethical, maintainable, and aligned with modern QuoteAnalyzer output.Author: Refactored for production useVersion: 2.0.0"""from __future__ import annotationsimport loggingfrom dataclasses import dataclassfrom enum import Enumfrom typing import Dict, List, Optional# ============================================================================# Voice Catalog & Configuration# ============================================================================class VoiceGender(str, Enum):    """Voice gender categories (for TTS voice selection only)"""    MASCULINE = "masculine"    FEMININE = "feminine"    NEUTRAL = "neutral"class VoiceAge(str, Enum):    """Voice age characteristics"""    YOUNG = "young"    MIDDLE_AGED = "middle_aged"    MATURE = "mature"class VoiceTone(str, Enum):    """Voice tonal qualities"""    WARM = "warm"    AUTHORITATIVE = "authoritative"    ENERGETIC = "energetic"    CALM = "calm"    EMOTIONAL = "emotional"    NEUTRAL = "neutral"@dataclassclass VoiceProfile:    """    Complete voice profile with metadata.    Attributes:        voice_id: ElevenLabs voice identifier        name: Human-readable voice name        gender: Voice gender characteristic (for TTS only, not person stereotyping)        age: Perceived age range        primary_tones: Main tonal qualities        languages: Supported language codes        description: Voice characteristics description        use_cases: Recommended scenarios    """    voice_id: str    name: str    gender: VoiceGender    age: VoiceAge    primary_tones: List[VoiceTone]    languages: Optional[List[str]] = None    description: str = ""    use_cases: Optional[List[str]] = None    def __post_init__(self):        if self.languages is None:            self.languages = ["en"]  # Default to English        if self.use_cases is None:            self.use_cases = []# ============================================================================# Voice Catalog (ElevenLabs Default Voices)# ============================================================================VOICE_CATALOG: Dict[str, VoiceProfile] = {    "Rachel": VoiceProfile(        voice_id="EXAVITQu4vr4xnSDxMaL",        name="Rachel",        gender=VoiceGender.FEMININE,        age=VoiceAge.MIDDLE_AGED,        primary_tones=[VoiceTone.WARM, VoiceTone.CALM, VoiceTone.NEUTRAL],        languages=["en"],        description="Warm, professional voice with clear articulation. "        "Excellent for narration and inspirational content.",        use_cases=["narration", "meditation", "educational", "inspirational"],    ),    "Antoni": VoiceProfile(        voice_id="ErXwobaYiN019PkySvjV",        name="Antoni",        gender=VoiceGender.MASCULINE,        age=VoiceAge.MIDDLE_AGED,        primary_tones=[VoiceTone.AUTHORITATIVE, VoiceTone.CALM, VoiceTone.NEUTRAL],        languages=["en"],        description="Deep, authoritative voice with gravitas. "        "Ideal for serious content and professional narration.",        use_cases=["documentary", "news", "corporate", "serious_quotes"],    ),    "Adam": VoiceProfile(        voice_id="pNInz6obpgDQGcFmaJgB",        name="Adam",        gender=VoiceGender.MASCULINE,        age=VoiceAge.YOUNG,        primary_tones=[VoiceTone.ENERGETIC, VoiceTone.WARM],        languages=["en"],        description="Youthful, energetic voice with enthusiasm. "        "Perfect for motivational and upbeat content.",        use_cases=["motivation", "sports", "youth_content", "energetic_quotes"],    ),    "Elli": VoiceProfile(        voice_id="MF3mGyEYCl7XYWbV9V6O",        name="Elli",        gender=VoiceGender.FEMININE,        age=VoiceAge.YOUNG,        primary_tones=[VoiceTone.EMOTIONAL, VoiceTone.WARM],        languages=["en"],        description="Expressive, emotional voice with range. "        "Great for storytelling and emotional narratives.",        use_cases=["storytelling", "emotional_content", "audiobooks", "tender_quotes"],    ),}# ============================================================================# Selection Strategy# ============================================================================@dataclassclass VoiceSelectionCriteria:    """    Criteria for voice selection compatible with QuoteAnalyzer output.    Maps modern VoiceCharacteristic values to voice selection parameters.    """    # Modern characteristics (from QuoteAnalyzer v2)    voice_type: Optional[str] = (        None  # "warm", "authoritative", "dynamic", "gentle", "neutral"    )    energy_level: Optional[str] = None  # "calm", "balanced", "energetic", "intense"    emotion: Optional[str] = None  # "hopeful", "serious", "inspiring", etc.    formality: Optional[str] = None  # "formal", "informal", "neutral"    # Legacy support (deprecated but supported for backward compatibility)    tone: Optional[str] = None    gender: Optional[str] = None  # Only for voice selection, not person stereotyping    age: Optional[str] = None    # Preferences    language: str = "en"    prefer_neutral: bool = False  # Prefer gender-neutral voices when availableclass VoiceSelector:    """    Production-grade voice selector with multiple selection strategies.    Features:    - Modern criteria support (voice_type, energy_level)    - Legacy criteria support (gender, age, tone)    - Scoring-based intelligent selection    - Fallback mechanisms    - Comprehensive logging    - Extensible catalog    Example:        >>> selector = VoiceSelector()        >>> voice = selector.select(VoiceSelectionCriteria(        ...     voice_type="warm",        ...     energy_level="calm"        ... ))        >>> print(voice.name)  # "Rachel"    """    def __init__(self, voice_catalog: Optional[Dict[str, VoiceProfile]] = None):        """        Initialize voice selector.        Args:            voice_catalog: Custom voice catalog. Uses default if None.        """        self.catalog = voice_catalog or VOICE_CATALOG        self.logger = logging.getLogger(__name__)        self.logger.info(f"VoiceSelector initialized with {len(self.catalog)} voices")    def select(self, criteria: VoiceSelectionCriteria) -> VoiceProfile:        """        Select best matching voice based on criteria.        Args:            criteria: Voice selection criteria        Returns:            VoiceProfile with best match        """        self.logger.debug(f"Selecting voice for criteria: {criteria}")        # Try modern selection first (preferred)        if criteria.voice_type or criteria.energy_level:            voice = self._select_modern(criteria)            if voice:                self.logger.info(f"Selected voice (modern): {voice.name}")                return voice        # Fall back to legacy selection        if criteria.gender or criteria.age or criteria.tone:            voice = self._select_legacy(criteria)            if voice:                self.logger.info(f"Selected voice (legacy): {voice.name}")                return voice        # Ultimate fallback        fallback = self._get_fallback_voice(criteria)        self.logger.warning(f"Using fallback voice: {fallback.name}")        return fallback    def select_by_name(self, name: str) -> Optional[VoiceProfile]:        """        Select voice by name.        Args:            name: Voice name (e.g., "Rachel")        Returns:            VoiceProfile if found, None otherwise        """        return self.catalog.get(name)    def list_voices(        self,        gender: Optional[VoiceGender] = None,        age: Optional[VoiceAge] = None,        language: Optional[str] = None,    ) -> List[VoiceProfile]:        """        List available voices with optional filtering.        Args:            gender: Filter by gender            age: Filter by age            language: Filter by language support        Returns:            List of matching VoiceProfile objects        """        voices = list(self.catalog.values())        if gender:            voices = [v for v in voices if v.gender == gender]        if age:            voices = [v for v in voices if v.age == age]        if language:            voices = [                v for v in voices if v.languages is not None and language in v.languages            ]        return voices    # ========================================================================    # Modern Selection Strategy (Scoring-based)    # ========================================================================    def _select_modern(        self, criteria: VoiceSelectionCriteria    ) -> Optional[VoiceProfile]:        """        Select voice using modern criteria with scoring algorithm.        """        scores: Dict[str, float] = {}        for name, profile in self.catalog.items():            score = 0.0            # Match voice_type to primary_tones            if criteria.voice_type:                score += self._score_voice_type_match(criteria.voice_type, profile)            # Match energy_level            if criteria.energy_level:                score += self._score_energy_match(criteria.energy_level, profile)            # Match emotion            if criteria.emotion:                score += self._score_emotion_match(criteria.emotion, profile)            # Match formality            if criteria.formality:                score += self._score_formality_match(criteria.formality, profile)            # Language support            if profile.languages is not None and criteria.language in profile.languages:                score += 10.0            scores[name] = score        # Return highest scoring voice if score > 0        if scores:            best_name = max(scores, key=lambda k: scores[k])            if scores[best_name] > 0:                self.logger.debug(f"Voice scores: {scores}")                return self.catalog[best_name]        return None    def _score_voice_type_match(self, voice_type: str, profile: VoiceProfile) -> float:        """Score match between voice_type and profile tones"""        voice_type_lower = voice_type.lower()        # Direct mapping: voice_type -> VoiceTone        mapping = {            "warm": [VoiceTone.WARM, VoiceTone.EMOTIONAL],            "authoritative": [VoiceTone.AUTHORITATIVE, VoiceTone.CALM],            "dynamic": [VoiceTone.ENERGETIC],            "gentle": [VoiceTone.WARM, VoiceTone.CALM, VoiceTone.EMOTIONAL],            "neutral": [VoiceTone.NEUTRAL, VoiceTone.CALM],        }        target_tones = mapping.get(voice_type_lower, [])        # Score: 20 points for exact match, 10 for partial        score = 0.0        for tone in target_tones:            if tone in profile.primary_tones:                score += 20.0                break        else:            # Partial match            if any(t in profile.primary_tones for t in target_tones):                score += 10.0        return score    def _score_energy_match(self, energy_level: str, profile: VoiceProfile) -> float:        """Score match between energy_level and profile"""        energy_lower = energy_level.lower()        energy_mapping = {            "calm": [VoiceTone.CALM, VoiceTone.WARM],            "balanced": [VoiceTone.NEUTRAL, VoiceTone.WARM],            "energetic": [VoiceTone.ENERGETIC],            "intense": [VoiceTone.ENERGETIC, VoiceTone.EMOTIONAL],        }        target_tones = energy_mapping.get(energy_lower, [])        score = 0.0        for tone in target_tones:            if tone in profile.primary_tones:                score += 15.0                break        return score    def _score_emotion_match(self, emotion: str, profile: VoiceProfile) -> float:        """Score match between emotion and profile"""        emotion_lower = emotion.lower()        # Map emotions to suitable voice characteristics        emotion_to_tones = {            "hopeful": [VoiceTone.WARM, VoiceTone.ENERGETIC],            "energetic": [VoiceTone.ENERGETIC],            "serious": [VoiceTone.AUTHORITATIVE, VoiceTone.CALM],            "reflective": [VoiceTone.CALM, VoiceTone.WARM],            "inspiring": [VoiceTone.WARM, VoiceTone.ENERGETIC],            "melancholic": [VoiceTone.EMOTIONAL, VoiceTone.CALM],            "neutral": [VoiceTone.NEUTRAL],        }        target_tones = emotion_to_tones.get(emotion_lower, [])        score = 0.0        for tone in target_tones:            if tone in profile.primary_tones:                score += 10.0                break        return score    def _score_formality_match(self, formality: str, profile: VoiceProfile) -> float:        """Score match for formality level"""        formality_lower = formality.lower()        # Formality preferences        if formality_lower == "formal":            if VoiceTone.AUTHORITATIVE in profile.primary_tones:                return 10.0            if profile.age == VoiceAge.MATURE:                return 5.0        elif formality_lower == "informal":            if profile.age == VoiceAge.YOUNG:                return 5.0            if VoiceTone.WARM in profile.primary_tones:                return 5.0        return 0.0    # ========================================================================    # Legacy Selection Strategy (Rule-based)    # ========================================================================    def _select_legacy(        self, criteria: VoiceSelectionCriteria    ) -> Optional[VoiceProfile]:        """        Legacy selection for backward compatibility.        Maps old gender/age/tone criteria to voices.        """        g = (criteria.gender or "").lower()        a = (criteria.age or "").lower()        t = (criteria.tone or "").lower()        # Map legacy values to modern VoiceGender/VoiceAge        gender_map = {            "male": VoiceGender.MASCULINE,            "female": VoiceGender.FEMININE,            "masculine": VoiceGender.MASCULINE,            "feminine": VoiceGender.FEMININE,        }        age_map = {            "young": VoiceAge.YOUNG,            "youth": VoiceAge.YOUNG,            "adult": VoiceAge.MIDDLE_AGED,            "grown": VoiceAge.MIDDLE_AGED,            "mature": VoiceAge.MATURE,        }        target_gender = gender_map.get(g)        target_age = age_map.get(a)        # Rule-based selection (original logic)        if target_gender == VoiceGender.MASCULINE:            if target_age in {VoiceAge.MIDDLE_AGED, VoiceAge.MATURE}:                if t in {"serious", "calm", "neutral"}:                    return self.catalog["Antoni"]            if target_age == VoiceAge.YOUNG:                if t in {"energetic", "excited", "hopeful"}:                    return self.catalog["Adam"]        if target_gender == VoiceGender.FEMININE:            if target_age in {VoiceAge.MIDDLE_AGED, VoiceAge.MATURE}:                if t in {"inspiring", "hopeful", "warm"}:                    return self.catalog["Rachel"]            if target_age == VoiceAge.YOUNG:                if t in {"emotional", "tender", "sad"}:                    return self.catalog["Elli"]        # Fallback by gender only        if target_gender == VoiceGender.MASCULINE:            return self.catalog["Antoni"]        if target_gender == VoiceGender.FEMININE:            return self.catalog["Rachel"]        return None    # ========================================================================    # Fallback Logic    # ========================================================================    def _get_fallback_voice(self, criteria: VoiceSelectionCriteria) -> VoiceProfile:        """Get fallback voice when no matches found"""        # Default to Rachel (warm, versatile)        return self.catalog.get("Rachel", list(self.catalog.values())[0])# ============================================================================# Integration with QuoteAnalyzer# ============================================================================class VoiceSelectorForQuoteAnalyzer:    """    Convenience wrapper for direct integration with QuoteAnalyzer v2 output.    Example:        >>> from quote_analyzer_v2 import QuoteAnalyzer        >>> analyzer = QuoteAnalyzer()        >>> selector = VoiceSelectorForQuoteAnalyzer()        >>>        >>> result = analyzer.analyze("Never give up!")        >>> voice = selector.select_from_analysis(result)        >>> print(voice.voice_id)  # Ready for ElevenLabs API    """    def __init__(self):        self.selector = VoiceSelector()        self.logger = logging.getLogger(__name__)    def select_from_analysis(self, analysis_result) -> VoiceProfile:        """        Select voice directly from QuoteAnalyzer result.        Args:            analysis_result: QuoteAnalysisResult from QuoteAnalyzer.analyze()        Returns:            VoiceProfile ready for TTS synthesis        """        criteria = VoiceSelectionCriteria(            voice_type=analysis_result.voice_type,            energy_level=analysis_result.energy_level,            emotion=analysis_result.emotion,            formality=analysis_result.formality,            tone=analysis_result.tone,            language=analysis_result.metadata.detected_language,        )        return self.selector.select(criteria)    def select_from_dict(self, analysis_dict: Dict) -> VoiceProfile:        """        Select voice from dictionary (e.g., from analyze_quote() function).        Args:            analysis_dict: Dictionary with analysis results        Returns:            VoiceProfile ready for TTS synthesis        """        criteria = VoiceSelectionCriteria(            voice_type=analysis_dict.get("voice_type"),            energy_level=analysis_dict.get("energy_level"),            emotion=analysis_dict.get("emotion"),            formality=analysis_dict.get("formality"),            tone=analysis_dict.get("tone"),            language=analysis_dict.get("metadata", {}).get("detected_language", "en"),        )        return self.selector.select(criteria)# ============================================================================# Convenience Functions# ============================================================================def select_voice(    voice_type: Optional[str] = None,    energy_level: Optional[str] = None,    emotion: Optional[str] = None,    # Legacy support    gender: Optional[str] = None,    age: Optional[str] = None,    tone: Optional[str] = None,) -> str:    """    Convenience function for quick voice ID selection.    Returns voice_id string compatible with ElevenLabs API.    Args:        voice_type: Modern voice characteristic ("warm", "authoritative", etc.)        energy_level: Energy level ("calm", "energetic", etc.)        emotion: Emotional state        gender: (Legacy) Voice gender        age: (Legacy) Voice age        tone: (Legacy) Tone characteristic    Returns:        ElevenLabs voice_id string    Example:        >>> voice_id = select_voice(voice_type="warm", energy_level="calm")        >>> # Use voice_id with ElevenLabs API    """    criteria = VoiceSelectionCriteria(        voice_type=voice_type,        energy_level=energy_level,        emotion=emotion,        gender=gender,        age=age,        tone=tone,    )    selector = VoiceSelector()    voice = selector.select(criteria)    return voice.voice_iddef get_voice_catalog() -> Dict[str, VoiceProfile]:    """    Get complete voice catalog with metadata.    Useful for UI/UX to display available voices.    Returns:        Dictionary of voice name -> VoiceProfile    """    return VOICE_CATALOG.copy()# ============================================================================# Example Usage & Testing# ============================================================================if __name__ == "__main__":    # Setup logging    logging.basicConfig(        level=logging.INFO,        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",    )    print("=" * 80)    print("VOICE SELECTOR v2.0 - Production Test Suite")    print("=" * 80)    selector = VoiceSelector()    # Test 1: Modern criteria    print("\n== Test 1: Modern Selection Strategy ==")    print("-" * 80)    test_cases_modern = [        {"voice_type": "warm", "energy_level": "calm", "expected": "Rachel"},        {"voice_type": "authoritative", "energy_level": "calm", "expected": "Antoni"},        {"voice_type": "dynamic", "energy_level": "energetic", "expected": "Adam"},        {"voice_type": "gentle", "energy_level": "calm", "emotion": "melancholic", "expected": "Elli"},    ]    for i, case in enumerate(test_cases_modern, 1):        expected = case.pop("expected")        criteria = VoiceSelectionCriteria(            voice_type=case.get("voice_type"),            energy_level=case.get("energy_level"),            emotion=case.get("emotion"),            formality=case.get("formality"),            tone=case.get("tone"),            gender=case.get("gender"),            age=case.get("age"),            language=case.get("language", "en"),        )        voice = selector.select(criteria)        status = "OK" if voice.name == expected else "FAIL"        print(f"{status} Test {i}: {case}")        print(f"   Selected: {voice.name} (expected: {expected})")        print(f"   Voice ID: {voice.voice_id}")    # Test 2: Legacy compatibility    print("\n== Test 2: Legacy Compatibility ==")    print("-" * 80)    test_cases_legacy = [        {"gender": "male", "age": "adult", "tone": "serious", "expected": "Antoni"},        {"gender": "male", "age": "young", "tone": "energetic", "expected": "Adam"},        {"gender": "female", "age": "adult", "tone": "warm", "expected": "Rachel"},        {"gender": "female", "age": "young", "tone": "emotional", "expected": "Elli"},    ]    for i, case in enumerate(test_cases_legacy, 1):        expected = case.pop("expected")        criteria = VoiceSelectionCriteria(            voice_type=case.get("voice_type"),            energy_level=case.get("energy_level"),            emotion=case.get("emotion"),            formality=case.get("formality"),            tone=case.get("tone"),            gender=case.get("gender"),            age=case.get("age"),            language=case.get("language", "en"),        )        voice = selector.select(criteria)        status = "OK" if voice.name == expected else "FAIL"        print(f"{status} Test {i}: {case}")        print(f"   Selected: {voice.name} (expected: {expected})")    # Test 3: Voice catalog listing    print("\n== Test 3: Voice Catalog Listing ==")    print("-" * 80)    print("\nAll available voices:")    for name, profile in VOICE_CATALOG.items():        print(f"  - {name}: {profile.description[:60]}...")        print(f"    Gender: {profile.gender.value}, Age: {profile.age.value}")        print(f"    Tones: {', '.join([t.value for t in profile.primary_tones])}")    # Test 4: Integration example    print("\n== Test 4: QuoteAnalyzer Integration ==")    print("-" * 80)    mock_analysis = {        "voice_type": "warm",        "energy_level": "balanced",        "emotion": "hopeful",        "formality": "informal",        "tone": "hopeful",        "metadata": {"detected_language": "en"},    }    integration_selector = VoiceSelectorForQuoteAnalyzer()    voice = integration_selector.select_from_dict(mock_analysis)    print(f"Analysis: {mock_analysis}")    print(f"Selected Voice: {voice.name}")    print(f"   Voice ID: {voice.voice_id}")    print(f"   Description: {voice.description}")    print("\n" + "=" * 80)    print("All tests complete!")
+"""
+Standalone demo for voice selection with a small catalog and CLI run.
+This file is independent from backend/ and safe to run directly.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Optional
+
+
+class VoiceGender(str, Enum):
+    MASCULINE = "masculine"
+    FEMININE = "feminine"
+    NEUTRAL = "neutral"
+
+
+class VoiceAge(str, Enum):
+    YOUNG = "young"
+    MIDDLE_AGED = "middle_aged"
+    MATURE = "mature"
+
+
+class VoiceTone(str, Enum):
+    WARM = "warm"
+    AUTHORITATIVE = "authoritative"
+    ENERGETIC = "energetic"
+    CALM = "calm"
+    EMOTIONAL = "emotional"
+    NEUTRAL = "neutral"
+
+
+@dataclass
+class VoiceProfile:
+    voice_id: str
+    name: str
+    gender: VoiceGender
+    age: VoiceAge
+    primary_tones: List[VoiceTone]
+    languages: Optional[List[str]] = None
+    description: str = ""
+
+    def __post_init__(self) -> None:
+        if self.languages is None:
+            self.languages = ["en"]
+
+
+VOICE_CATALOG: Dict[str, VoiceProfile] = {
+    "Rachel": VoiceProfile(
+        voice_id="EXAVITQu4vr4xnSDxMaL",
+        name="Rachel",
+        gender=VoiceGender.FEMININE,
+        age=VoiceAge.MIDDLE_AGED,
+        primary_tones=[VoiceTone.WARM, VoiceTone.CALM, VoiceTone.NEUTRAL],
+        languages=["en"],
+        description=(
+            "Warm, professional voice with clear articulation. "
+            "Excellent for narration and inspirational content."
+        ),
+    ),
+    "Antoni": VoiceProfile(
+        voice_id="ErXwobaYiN019PkySvjV",
+        name="Antoni",
+        gender=VoiceGender.MASCULINE,
+        age=VoiceAge.MIDDLE_AGED,
+        primary_tones=[VoiceTone.AUTHORITATIVE, VoiceTone.CALM, VoiceTone.NEUTRAL],
+        languages=["en"],
+        description=(
+            "Deep, authoritative voice with gravitas. "
+            "Ideal for serious content and professional narration."
+        ),
+    ),
+    "Adam": VoiceProfile(
+        voice_id="pNInz6obpgDQGcFmaJgB",
+        name="Adam",
+        gender=VoiceGender.MASCULINE,
+        age=VoiceAge.YOUNG,
+        primary_tones=[VoiceTone.ENERGETIC, VoiceTone.WARM],
+        languages=["en"],
+        description=(
+            "Youthful, energetic voice with enthusiasm. "
+            "Perfect for motivational and upbeat content."
+        ),
+    ),
+    "Elli": VoiceProfile(
+        voice_id="MF3mGyEYCl7XYWbV9V6O",
+        name="Elli",
+        gender=VoiceGender.FEMININE,
+        age=VoiceAge.YOUNG,
+        primary_tones=[VoiceTone.EMOTIONAL, VoiceTone.WARM],
+        languages=["en"],
+        description=(
+            "Expressive, emotional voice with range. "
+            "Great for storytelling and emotional narratives."
+        ),
+    ),
+}
+
+
+@dataclass
+class VoiceSelectionCriteria:
+    voice_type: Optional[str] = None
+    energy_level: Optional[str] = None
+    emotion: Optional[str] = None
+    formality: Optional[str] = None
+    tone: Optional[str] = None
+    gender: Optional[str] = None
+    age: Optional[str] = None
+    language: str = "en"
+    prefer_neutral: bool = False
+
+
+class VoiceSelector:
+    def __init__(self, catalog: Optional[Dict[str, VoiceProfile]] = None) -> None:
+        self.catalog = catalog or VOICE_CATALOG
+        self.logger = logging.getLogger(__name__)
+
+    def _score(self, name: str, profile: VoiceProfile, c: VoiceSelectionCriteria) -> float:
+        score = 0.0
+        vt_map = {
+            "warm": [VoiceTone.WARM, VoiceTone.EMOTIONAL],
+            "authoritative": [VoiceTone.AUTHORITATIVE, VoiceTone.CALM],
+            "dynamic": [VoiceTone.ENERGETIC],
+            "gentle": [VoiceTone.WARM, VoiceTone.CALM],
+            "neutral": [VoiceTone.NEUTRAL, VoiceTone.CALM],
+        }
+        if c.voice_type:
+            targets = vt_map.get(c.voice_type.lower(), [])
+            if any(t in profile.primary_tones for t in targets):
+                score += 20.0
+        if c.energy_level:
+            if c.energy_level.lower() == "energetic" and VoiceTone.ENERGETIC in profile.primary_tones:
+                score += 10.0
+            if c.energy_level.lower() == "calm" and VoiceTone.CALM in profile.primary_tones:
+                score += 10.0
+        if c.emotion and VoiceTone.EMOTIONAL in profile.primary_tones:
+            score += 5.0
+        if c.language and profile.languages and c.language in profile.languages:
+            score += 5.0
+        return score
+
+    def select(self, c: VoiceSelectionCriteria) -> VoiceProfile:
+        scores = {name: self._score(name, p, c) for name, p in self.catalog.items()}
+        best = max(scores, key=scores.get)
+        if scores[best] > 0:
+            return self.catalog[best]
+        # Legacy fallback
+        if c.tone:
+            tone = c.tone.lower()
+            if tone in ("warm", "emotional"):
+                return self.catalog["Rachel"]
+            if tone in ("serious", "authoritative"):
+                return self.catalog["Antoni"]
+            if tone in ("energetic", "dynamic"):
+                return self.catalog["Adam"]
+        return self.catalog["Rachel"]
+
+
+class VoiceSelectorForQuoteAnalyzer:
+    def __init__(self) -> None:
+        self.selector = VoiceSelector()
+
+    def select_from_dict(self, analysis_dict: Dict) -> VoiceProfile:
+        c = VoiceSelectionCriteria(
+            voice_type=analysis_dict.get("voice_type"),
+            energy_level=analysis_dict.get("energy_level"),
+            emotion=analysis_dict.get("emotion"),
+            formality=analysis_dict.get("formality"),
+            tone=analysis_dict.get("tone"),
+            language=(analysis_dict.get("metadata", {}) or {}).get("detected_language", "en"),
+        )
+        return self.selector.select(c)
+
+
+def get_voice_catalog() -> Dict[str, VoiceProfile]:
+    return VOICE_CATALOG.copy()
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    print("=" * 80)
+    print("VOICE SELECTOR DEMO")
+    print("=" * 80)
+
+    selector = VoiceSelector()
+
+    print("\n== Test 1: Modern Selection Strategy ==")
+    tests_modern = [
+        {"voice_type": "warm", "energy_level": "calm", "expected": "Rachel"},
+        {"voice_type": "authoritative", "energy_level": "calm", "expected": "Antoni"},
+        {"voice_type": "dynamic", "energy_level": "energetic", "expected": "Adam"},
+        {"voice_type": "gentle", "energy_level": "calm", "emotion": "melancholic", "expected": "Elli"},
+    ]
+    for i, case in enumerate(tests_modern, 1):
+        expected = case.pop("expected")
+        c = VoiceSelectionCriteria(
+            voice_type=case.get("voice_type"),
+            energy_level=case.get("energy_level"),
+            emotion=case.get("emotion"),
+            language=case.get("language", "en"),
+        )
+        v = selector.select(c)
+        status = "OK" if v.name == expected else "FAIL"
+        print(f"{status} Test {i}: {case}")
+        print(f"   Selected: {v.name} (expected: {expected})")
+        print(f"   Voice ID: {v.voice_id}")
+
+    print("\n== Test 2: Legacy Compatibility ==")
+    tests_legacy = [
+        {"gender": "male", "age": "adult", "tone": "serious", "expected": "Antoni"},
+        {"gender": "male", "age": "young", "tone": "energetic", "expected": "Adam"},
+        {"gender": "female", "age": "adult", "tone": "warm", "expected": "Rachel"},
+        {"gender": "female", "age": "young", "tone": "emotional", "expected": "Elli"},
+    ]
+    for i, case in enumerate(tests_legacy, 1):
+        expected = case.pop("expected")
+        c = VoiceSelectionCriteria(
+            tone=case.get("tone"),
+            gender=case.get("gender"),
+            age=case.get("age"),
+            language=case.get("language", "en"),
+        )
+        v = selector.select(c)
+        status = "OK" if v.name == expected else "FAIL"
+        print(f"{status} Test {i}: {case}")
+        print(f"   Selected: {v.name} (expected: {expected})")
+
+    print("\n== Test 3: Voice Catalog Listing ==")
+    print("All available voices:")
+    for name, profile in VOICE_CATALOG.items():
+        print(f"  - {name}: {profile.description[:60]}...")
+        print(f"    Gender: {profile.gender.value}, Age: {profile.age.value}")
+        print(f"    Tones: {', '.join([t.value for t in profile.primary_tones])}")
+
+    print("\n== Test 4: QuoteAnalyzer Integration ==")
+    mock = {
+        "voice_type": "warm",
+        "energy_level": "balanced",
+        "emotion": "hopeful",
+        "formality": "informal",
+        "tone": "hopeful",
+        "metadata": {"detected_language": "en"},
+    }
+    integration_selector = VoiceSelectorForQuoteAnalyzer()
+    v = integration_selector.select_from_dict(mock)
+    print(f"Analysis: {mock}")
+    print(f"Selected Voice: {v.name}")
+    print(f"   Voice ID: {v.voice_id}")
+    print(f"   Description: {v.description}")
+
+    print("\n" + "=" * 80)
+    print("All tests complete!")
+
