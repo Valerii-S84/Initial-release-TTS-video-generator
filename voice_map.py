@@ -143,9 +143,11 @@ class VoiceSelector:
 
     def select(self, c: VoiceSelectionCriteria) -> VoiceProfile:
         scores = {name: self._score(name, p, c) for name, p in self.catalog.items()}
-        best = max(scores, key=scores.get)
-        if scores[best] > 0:
-            return self.catalog[best]
+        if scores:
+            # Use an explicit lambda so type checkers don't complain about dict.get overloads
+            best = max(scores.keys(), key=lambda k: scores.get(k, float("-inf")))
+            if scores.get(best, 0.0) > 0:
+                return self.catalog[best]
         # Legacy fallback
         if c.tone:
             tone = c.tone.lower()
@@ -252,4 +254,3 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 80)
     print("All tests complete!")
-

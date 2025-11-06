@@ -51,8 +51,8 @@ Jobs = None  # no direct use; kept for backward compatibility if referenced
     "",
     response_model=VideoListResponse,
     responses={
-        200: {"description": "Список відео"},
-        401: {"model": ErrorEnvelope, "description": "Неавторизовано"},
+        200: {"description": "Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð²Ñ–Ð´ÐµÐ¾"},
+        401: {"model": ErrorEnvelope, "description": "ÐÐµÐ°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð¾Ð²Ð°Ð½Ð¾"},
     },
 )
 def list_videos(
@@ -99,8 +99,8 @@ def list_videos(
 @router.delete(
     "/{video_id}",
     responses={
-        200: {"description": "Видалено або вже видалено"},
-        404: {"model": ErrorEnvelope, "description": "Відео не знайдено"},
+        200: {"description": "Ð’Ð¸Ð´Ð°Ð»ÐµÐ½Ð¾ Ð°Ð±Ð¾ Ð²Ð¶Ðµ Ð²Ð¸Ð´Ð°Ð»ÐµÐ½Ð¾"},
+        404: {"model": ErrorEnvelope, "description": "Ð’Ñ–Ð´ÐµÐ¾ Ð½Ðµ Ð·Ð½Ð°Ð¹Ð´ÐµÐ½Ð¾"},
     },
 )
 def delete_video(
@@ -114,10 +114,7 @@ def delete_video(
         .first()
     )
     if not v:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": {"code": "NOT_FOUND", "message": "Відео не знайдено"}},
-        )
+        raise HTTPException(status_code=404, detail=err("NOT_FOUND"))
     if v.deleted_at is None:
         from datetime import datetime
 
@@ -131,7 +128,7 @@ def delete_video(
 @router.post(
     "/bulk_delete",
     responses={
-        200: {"description": "Кількість оновлених записів"},
+        200: {"description": "ÐšÑ–Ð»ÑŒÐºÑ–ÑÑ‚ÑŒ Ð¾Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ñ… Ð·Ð°Ð¿Ð¸ÑÑ–Ð²"},
         401: {"model": ErrorEnvelope},
     },
     openapi_extra={
@@ -175,8 +172,8 @@ def bulk_delete(
 @router.post(
     "/{video_id}/restore",
     responses={
-        200: {"description": "Запис відновлено"},
-        404: {"model": ErrorEnvelope, "description": "Відео не знайдено"},
+        200: {"description": "Ð—Ð°Ð¿Ð¸Ñ Ð²Ñ–Ð´Ð½Ð¾Ð²Ð»ÐµÐ½Ð¾"},
+        404: {"model": ErrorEnvelope, "description": "Ð’Ñ–Ð´ÐµÐ¾ Ð½Ðµ Ð·Ð½Ð°Ð¹Ð´ÐµÐ½Ð¾"},
     },
 )
 def restore_video(
@@ -190,10 +187,7 @@ def restore_video(
         .first()
     )
     if not v:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": {"code": "NOT_FOUND", "message": "Відео не знайдено"}},
-        )
+        raise HTTPException(status_code=404, detail=err("NOT_FOUND"))
     if v.deleted_at is not None:
         v.deleted_at = None
         db.add(v)
@@ -209,9 +203,9 @@ def restore_video(
 @router.post(
     "/upload",
     responses={
-        200: {"description": "Мета завантаженого файлу"},
-        400: {"model": ErrorEnvelope, "description": "Помилка валідації файлу"},
-        413: {"model": ErrorEnvelope, "description": "Файл надто великий"},
+        200: {"description": "ÐœÐµÑ‚Ð° Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð¾Ð³Ð¾ Ñ„Ð°Ð¹Ð»Ñƒ"},
+        400: {"model": ErrorEnvelope, "description": "ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ° Ð²Ð°Ð»Ñ–Ð´Ð°Ñ†Ñ–Ñ— Ñ„Ð°Ð¹Ð»Ñƒ"},
+        413: {"model": ErrorEnvelope, "description": "Ð¤Ð°Ð¹Ð» Ð½Ð°Ð´Ñ‚Ð¾ Ð²ÐµÐ»Ð¸ÐºÐ¸Ð¹"},
     },
 )
 async def upload_video(
@@ -226,7 +220,7 @@ async def upload_video(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+            detail=err(VALIDATION_ERROR, None, hint="Очікується додатний розмір файлу"),
         )
     increment_usage(db, current_user, "upload")
     return meta
@@ -239,7 +233,7 @@ async def upload_video(
     "/upload/init",
     responses={
         200: {
-            "description": "Сесія завантаження створена",
+            "description": "Ð¡ÐµÑÑ–Ñ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ ÑÑ‚Ð²Ð¾Ñ€ÐµÐ½Ð°",
             "content": {
                 "application/json": {
                     "example": {
@@ -250,9 +244,9 @@ async def upload_video(
                 }
             },
         },
-        400: {"model": ErrorEnvelope, "description": "Невалідний розмір файлу"},
+        400: {"model": ErrorEnvelope, "description": "ÐÐµÐ²Ð°Ð»Ñ–Ð´Ð½Ð¸Ð¹ Ñ€Ð¾Ð·Ð¼Ñ–Ñ€ Ñ„Ð°Ð¹Ð»Ñƒ"},
         401: {"model": ErrorEnvelope},
-        422: {"model": ErrorEnvelope, "description": "Помилка Pydantic"},
+        422: {"model": ErrorEnvelope, "description": "ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ° Pydantic"},
     },
 )
 def upload_init(
@@ -266,12 +260,7 @@ def upload_init(
     if size <= 0:
         raise HTTPException(
             status_code=400,
-            detail={
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": "Некоректний розмір файлу",
-                }
-            },
+            detail=err(VALIDATION_ERROR, None, hint="?????????? ???????? ?????? ?????"),
         )
     res = init_chunk_upload(filename, size, getattr(current_user, "id", None))
     audit_log(
@@ -286,12 +275,12 @@ def upload_init(
 @router.patch(
     "/upload/chunk",
     responses={
-        200: {"description": "Частина прийнята"},
-        400: {"model": ErrorEnvelope, "description": "Chunk надто великий"},
-        403: {"model": ErrorEnvelope, "description": "Токен відсутній/невірний"},
-        404: {"model": ErrorEnvelope, "description": "Сесію не знайдено"},
+        200: {"description": "Ð§Ð°ÑÑ‚Ð¸Ð½Ð° Ð¿Ñ€Ð¸Ð¹Ð½ÑÑ‚Ð°"},
+        400: {"model": ErrorEnvelope, "description": "Chunk Ð½Ð°Ð´Ñ‚Ð¾ Ð²ÐµÐ»Ð¸ÐºÐ¸Ð¹"},
+        403: {"model": ErrorEnvelope, "description": "Ð¢Ð¾ÐºÐµÐ½ Ð²Ñ–Ð´ÑÑƒÑ‚Ð½Ñ–Ð¹/Ð½ÐµÐ²Ñ–Ñ€Ð½Ð¸Ð¹"},
+        404: {"model": ErrorEnvelope, "description": "Ð¡ÐµÑÑ–ÑŽ Ð½Ðµ Ð·Ð½Ð°Ð¹Ð´ÐµÐ½Ð¾"},
         409: {
-            "description": "Невірний offset",
+            "description": "ÐÐµÐ²Ñ–Ñ€Ð½Ð¸Ð¹ offset",
             "content": {
                 "application/json": {
                     "example": {
@@ -313,14 +302,24 @@ async def upload_chunk(
     body = await request.body()
     if len(body) > settings.MAX_CHUNK_SIZE_MB * 1024 * 1024:
         raise HTTPException(
-            status_code=400, detail=err(VALIDATION_ERROR, MSG_CHUNK_TOO_LARGE)
+            status_code=400,
+            detail=err(
+                VALIDATION_ERROR,
+                MSG_CHUNK_TOO_LARGE,
+                hint=f"Максимальний розмір: {settings.MAX_CHUNK_SIZE_MB} MB",
+            ),
         )
     if settings.ENFORCE_UPLOAD_TOKEN:
         token = request.query_params.get("token")
         info = get_upload_info(upload_id) or {}
         if not token or token != str(info.get("token")):
             raise HTTPException(
-                status_code=403, detail=err(FORBIDDEN, MSG_UPLOAD_FORBIDDEN)
+                status_code=403,
+                detail=err(
+                    FORBIDDEN,
+                    MSG_UPLOAD_FORBIDDEN,
+                    hint="Додайте параметр token= з відповіді upload_init",
+                ),
             )
     try:
         _res = append_chunk(upload_id, offset, body, getattr(current_user, "id", None))
@@ -330,7 +329,7 @@ async def upload_chunk(
                 {
                     "error": {
                         "code": "BAD_OFFSET",
-                        "??????????? offset": "Невірний offset",
+                        "??????????? offset": "ÐÐµÐ²Ñ–Ñ€Ð½Ð¸Ð¹ offset",
                     },
                     "received": res.get("received", 0),
                 },
@@ -342,14 +341,14 @@ async def upload_chunk(
             detail={
                 "error": {
                     "code": "NOT_FOUND",
-                    "message": "Сесію завантаження не знайдено",
+                    "message": "Ð¡ÐµÑÑ–ÑŽ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ Ð½Ðµ Ð·Ð½Ð°Ð¹Ð´ÐµÐ½Ð¾",
                 }
             },
         )
     except PermissionError:
         raise HTTPException(
             status_code=403,
-            detail={"error": {"code": "FORBIDDEN", "message": "Нема доступу до сесії"}},
+            detail={"error": {"code": "FORBIDDEN", "message": "ÐÐµÐ¼Ð° Ð´Ð¾ÑÑ‚ÑƒÐ¿Ñƒ Ð´Ð¾ ÑÐµÑÑ–Ñ—"}},
         )
     audit_log(
         "upload.chunk",
@@ -363,8 +362,8 @@ async def upload_chunk(
 @router.post(
     "/upload/finish",
     responses={
-        200: {"description": "Файл зібрано"},
-        400: {"model": ErrorEnvelope, "description": "Помилка валідації/ffprobe"},
+        200: {"description": "Ð¤Ð°Ð¹Ð» Ð·Ñ–Ð±Ñ€Ð°Ð½Ð¾"},
+        400: {"model": ErrorEnvelope, "description": "ÐŸÐ¾Ð¼Ð¸Ð»ÐºÐ° Ð²Ð°Ð»Ñ–Ð´Ð°Ñ†Ñ–Ñ—/ffprobe"},
         403: {"model": ErrorEnvelope},
         404: {"model": ErrorEnvelope},
     },
@@ -382,14 +381,14 @@ def upload_finish(
             detail={
                 "error": {
                     "code": "NOT_FOUND",
-                    "message": "Сесію завантаження не знайдено",
+                    "message": "Ð¡ÐµÑÑ–ÑŽ Ð·Ð°Ð²Ð°Ð½Ñ‚Ð°Ð¶ÐµÐ½Ð½Ñ Ð½Ðµ Ð·Ð½Ð°Ð¹Ð´ÐµÐ½Ð¾",
                 }
             },
         )
     except PermissionError:
         raise HTTPException(
             status_code=403,
-            detail={"error": {"code": "FORBIDDEN", "message": "Нема доступу до сесії"}},
+            detail={"error": {"code": "FORBIDDEN", "message": "ÐÐµÐ¼Ð° Ð´Ð¾ÑÑ‚ÑƒÐ¿Ñƒ Ð´Ð¾ ÑÐµÑÑ–Ñ—"}},
         )
     except ValueError as e:
         msg = (
@@ -399,7 +398,7 @@ def upload_finish(
         )
         raise HTTPException(
             status_code=400,
-            detail={"error": {"code": "VALIDATION_ERROR", "message": msg}},
+            detail=err(VALIDATION_ERROR, None, hint="Очікується додатний розмір файлу"),
         )
     increment_usage(db, current_user, "upload")
     audit_log(
@@ -417,8 +416,8 @@ def upload_finish(
 @router.post(
     "/generate",
     responses={
-        200: {"description": "Задачу поставлено у чергу"},
-        400: {"model": ErrorEnvelope, "description": "Невалідні дані"},
+        200: {"description": "Ð—Ð°Ð´Ð°Ñ‡Ñƒ Ð¿Ð¾ÑÑ‚Ð°Ð²Ð»ÐµÐ½Ð¾ Ñƒ Ñ‡ÐµÑ€Ð³Ñƒ"},
+        400: {"model": ErrorEnvelope, "description": "ÐÐµÐ²Ð°Ð»Ñ–Ð´Ð½Ñ– Ð´Ð°Ð½Ñ–"},
         401: {"model": ErrorEnvelope},
         422: {"model": ErrorEnvelope},
     },
