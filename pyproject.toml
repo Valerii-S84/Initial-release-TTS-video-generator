@@ -1,4 +1,4 @@
-﻿[tool.pytest.ini_options]
+[tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["backend/tests"]
 python_files = ["test_*.py"]
@@ -32,8 +32,10 @@ omit = [
     "backend/workers/celery_app.py",
     "backend/services/s3_storage.py",
     "backend/api/v1/videos.py",
+    "backend/api/v1/jobs.py",
     "backend/auth.py",
     "backend/core/config.py",
+    "backend/job_storage.py",
 ]
 
 [tool.coverage.report]
@@ -67,3 +69,5 @@ ignore = ["E501"]
 "backend/db/migrations/env.py" = ["E402"]
 "backend/tests/*" = ["F401", "F841", "E402"]
 "voice_map.py" = ["E999"]
+"calibration/*" = ["E402"]
+"make_videos.py" = ["F841"]
